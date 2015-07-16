@@ -76,7 +76,179 @@ The table above contains the following data:
 
 # Data cleaning & tokenization
 
+The data mentioned above is loaded into R via `stringi::readLines`. Then a corpus is build for
+each data set:
+
+```{r build_corpus, message=FALSE, warning=FALSE}
+corpus_news <- corpus(news[1:10000])
+corpus_twitter <- corpus(twitter[1:10000])
+corpus_blogs <- corpus(blogs[1:10000])
+```
+
+Each corpus contains the original data together with some meta info.
+
+```{r clean_raw, echo=FALSE, message=FALSE}
+rm(news)
+rm(twitter)
+rm(blogs)
+```
+
+From this corpora we build document feature matrices via the `dfm` method.
+This method also performs several cleaning steps:
+
+- convert to lower case
+- tokenizing
+- remove numbers
+- remove punctuation
+- remove sepeators
+- remove twitter specific characters
+- strip additional whitespaces
+
+```{r build_matrix_news}
+dfm_news <- dfm(corpus_news)
+```
+
+```{r build_matrix_twitter}
+dfm_twitter <- dfm(corpus_twitter)
+```
+
+```{r build_matrix_blogs}
+dfm_blogs <- dfm(corpus_blogs)
+```
+
+We keep stopwords and do not use word stemming, as we are not interessed in classifying this text,
+but want to predict the next word to be typed. We also keep profane words, as they can help making
+predictions for the next word. 
+
+Via the `dfm` function we also create document feature matrices for bi- and tri-grams:
+```{r build_matrix_ngram}
+dfm_news_bi <- dfm(corpus_news, ngram=2)
+dfm_twitter_bi <- dfm(corpus_twitter, ngram=2)
+dfm_blogs_bi <- dfm(corpus_blogs, ngram=2)
+
+dfm_news_tri <- dfm(corpus_news, ngram=3)
+dfm_twitter_tri <- dfm(corpus_twitter, ngram=3)
+dfm_blogs_tri <- dfm(corpus_blogs, ngram=3)
+```
+
+```{r clean_corp, echo=FALSE, message=FALSE}
+rm(corpus_news)
+rm(corpus_twitter)
+rm(corpus_blogs)
+```
+
 # Exploratory Data Analysis
+
+## Top 20 Uni- Bi- and Tri-grams
+
+The following barplots show the frequencies for the 20 most frequent uni- bi- and tri-grams:
+
+```{r plot_uni_gram, echo=FALSE}
+top_unis_news <- as.data.frame(topfeatures(dfm_news, 20))
+top_unis_twitter <- as.data.frame(topfeatures(dfm_twitter, 20))
+top_unis_blogs <- as.data.frame(topfeatures(dfm_blogs, 20))
+
+names(top_unis_news) <- c("Frequency")
+names(top_unis_twitter) <- c("Frequency")
+names(top_unis_blogs) <- c("Frequency")
+
+top_unis_news$Source = "News"
+top_unis_twitter$Source = "Twitter"
+top_unis_blogs$Source = "Blogs"
+
+top_unis_news$Unigrams <- rownames(top_unis_news)
+top_unis_twitter$Unigrams <- rownames(top_unis_twitter)
+top_unis_blogs$Unigrams <- rownames(top_unis_blogs)
+
+top_unis <- rbind(top_unis_news, top_unis_twitter, top_unis_blogs)
+
+ggplot(top_unis, aes(x=Unigrams, y=Frequency, fill=Source)) + 
+  geom_bar(stat="identity") +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+  ggtitle("Frequencies for most frequent Unigrams") +
+  facet_grid(Source~., scales = "free") +
+  guides(fill=FALSE)
+```
+
+```{r plot_bi_gram, echo=FALSE}
+top_bi_news <- as.data.frame(topfeatures(dfm_news_bi, 20))
+top_bi_twitter <- as.data.frame(topfeatures(dfm_twitter_bi, 20))
+top_bi_blogs <- as.data.frame(topfeatures(dfm_blogs_bi, 20))
+
+names(top_bi_news) <- c("Frequency")
+names(top_bi_twitter) <- c("Frequency")
+names(top_bi_blogs) <- c("Frequency")
+
+top_bi_news$Source = "News"
+top_bi_twitter$Source = "Twitter"
+top_bi_blogs$Source = "Blogs"
+
+top_bi_news$Bigrams <- rownames(top_bi_news)
+top_bi_twitter$Bigrams <- rownames(top_bi_twitter)
+top_bi_blogs$Bigrams <- rownames(top_bi_blogs)
+
+top_bi <- rbind(top_bi_news, top_bi_twitter, top_bi_blogs)
+
+ggplot(top_bi, aes(x=Bigrams, y=Frequency, fill=Source)) + 
+  geom_bar(stat="identity") +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+  ggtitle("Frequencies for most frequent Bigrams") +
+  facet_grid(Source~., scales = "free") +
+  guides(fill=FALSE)
+```
+
+```{r plot_tri_gram, echo=FALSE}
+top_tri_news <- as.data.frame(topfeatures(dfm_news_tri, 20))
+top_tri_twitter <- as.data.frame(topfeatures(dfm_twitter_tri, 20))
+top_tri_blogs <- as.data.frame(topfeatures(dfm_blogs_tri, 20))
+
+names(top_tri_news) <- c("Frequency")
+names(top_tri_twitter) <- c("Frequency")
+names(top_tri_blogs) <- c("Frequency")
+
+top_tri_news$Source = "News"
+top_tri_twitter$Source = "Twitter"
+top_tri_blogs$Source = "Blogs"
+
+top_tri_news$Trigrams <- rownames(top_tri_news)
+top_tri_twitter$Trigrams <- rownames(top_tri_twitter)
+top_tri_blogs$Trigrams <- rownames(top_tri_blogs)
+
+top_tri <- rbind(top_tri_news, top_tri_twitter, top_tri_blogs)
+
+ggplot(top_tri, aes(x=Trigrams, y=Frequency, fill=Source)) + 
+  geom_bar(stat="identity") +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+  ggtitle("Frequencies for most frequent Trigrams") +
+  facet_grid(Source~., scales = "free") +
+  guides(fill=FALSE)
+```
+
+## Number of tokens per document
+
+This histograms show the number of tokens per document of the different sources. A document
+corresponds to one line in the raw text files.
+
+```{r nr_token, echo=FALSE}
+
+token_data = rbind(data.frame(tokens = ntoken(dfm_news), Source = "News"),
+                   data.frame(tokens = ntoken(dfm_twitter), Source = "Twitter"),
+                   data.frame(tokens = ntoken(dfm_blogs), Source = "Blogs"))
+ggplot(token_data, aes(x=tokens, fill=Source)) + 
+  geom_histogram(binwidth=5) +
+  theme_bw() +
+  facet_grid(Source~.,scales = "free") +
+  ggtitle("Number of tokens per document") +
+  xlab("Nr. tokens") +
+  ylab("Frequency") +
+  xlim(0,300)
+  
+```
+
+
 
 # Next Steps
 
