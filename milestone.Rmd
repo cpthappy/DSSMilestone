@@ -1,0 +1,103 @@
+---
+title: "Data Science Capstone Milestone Report"
+author: "Georg Vogelhuber"
+date: "15.7.2015"
+output: html_document
+---
+
+# Summary
+
+The aim of this project is to target the "Next Word Prediciton" problem (NWP), i. e. to predict the next word in a sentence. The final result of this project will be an algorithm for NWP implemented as shiny app. The NWP feature is commonly found in web search sites or virtual keyboards for mobile applications.
+
+For this project we use mainily the `quanteda`, `tm` and `stringi` packages for dealing with text data and tokenizing inputs.
+
+Our model for the NWP will be based on common n-gram techniques:
+http://cs.stanford.edu/people/eroberts/courses/soco/projects/2004-05/nlp/techniques_word.html
+
+This milestone report
+
+- describes the available data for this project,
+- provides exploratory data analysis and
+- gives an outline for the next steps in this project.
+
+
+# Data acquisition
+
+The data for this project is provided on the course website: https://d396qusza40orc.cloudfront.net/dsscapstone/dataset/Coursera-SwiftKey.zip. 
+The original source of this data is the HC Corpora http://www.corpora.heliohost.org. 
+For this project, we are using the English files. The files have been language filtered but may still contain some foreign text.
+
+```{r read_data, echo=FALSE, message=FALSE}
+load("news.RData")
+load("twitter.RData")
+load("blogs.RData")
+
+library(quanteda)
+library(ggplot2)
+library(dplyr)
+library(stringi)
+library(pander)
+```
+
+For the provided english Corpora we have the following summary statistics:
+
+```{r basic_stats, echo=FALSE, message=FALSE, results="asis"}
+rbind(stringi::stri_stats_general(twitter), 
+      stringi::stri_stats_general(news), 
+      stringi::stri_stats_general(blogs)) %>% as.data.frame -> stri_res
+rownames(stri_res) = c("Twitter", "News", "Blogs")
+stri_res <- cbind(stri_res, 
+                  File = c("en_US.twitter.txt", "en_US.news.txt", "en_US.blogs.txt"),
+                  Words = c(sum(stringi::stri_count_words(twitter)),
+                            sum(stringi::stri_count_words(news)),
+                            sum(stringi::stri_count_words(blogs))),
+                  Object.Size = c(object.size(twitter),
+                                  object.size(news),
+                                  object.size(blogs)),
+                  File.Size = file.size("en_US.twitter.txt",
+                                        "en_US.news.txt", 
+                                        "en_US.blogs.txt"))
+
+stri_res %>% 
+  select(File, File.Size, Object.Size, Lines, Words, Chars, -LinesNEmpty, -CharsNWhite) -> stri_res
+
+pandoc.table(stri_res, style="rmarkdown", caption="Basic Statistics for data sources")
+
+```
+
+The table above contains the following data:
+
+- *File*: filename
+- *File.Size*: Size of file in bytes
+- *Object.Size*: Size of the corresponding object, after reading file into R.
+- *Lines*: Number of lines in file
+- *Words*: Number of words in file
+- *Chars*: Number of characters in file
+
+# Data cleaning & tokenization
+
+# Exploratory Data Analysis
+
+# Next Steps
+
+I plan the following steps to develop and improve the prediciton algorithm:
+
+0. Split data into training, cross-validation and testing set. Build an evaluation function for
+   calculating the accuracy of the modell.
+1. Build a basic $n$-gram modell using interpolation with $n <= 4$. 
+2. Split corpus first into sentences, insert a start sentence tag and then build the $n$-gram modell,
+   so the prediciton algorithm takes the beginning of a new sentence into account.
+3. Remove documents with fewer than 3 tokens from the modell.
+4. Limit the modell to about 10k words and replace all words not in this list by a tag for "Unknown".
+   This step should reduce the size of the modell dramatically, so it will possibly run on shiny.
+   
+5. Use Kneser-Ney-Smoothing to improve the predictive quality of the algorithm.
+6. Increase the value of $n$. 
+7. Use more data from other sources. Possible sources could be:
+
+   - Wikipedia
+   - Get additional tweets
+   - Use exisiting corpora from R packages.
+   
+8. Implement profanity filtering.
+
