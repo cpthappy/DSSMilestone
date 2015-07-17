@@ -1,7 +1,7 @@
 ---
 title: "Data Science Capstone Milestone Report"
 author: "Georg Vogelhuber"
-date: "15.7.2015"
+date: "17.7.2015"
 output: html_document
 ---
 
@@ -77,20 +77,21 @@ The table above contains the following data:
 # Data cleaning & tokenization
 
 The data mentioned above is loaded into R via `stringi::readLines`. Then a corpus is build for
-each data set:
+each data set. We take only a random subsample of the provided data for the exploratry data analysis.
+The entire raw data is too big to process it in reasonable time.
 
-```{r build_corpus, message=FALSE, warning=FALSE}
-corpus_news <- corpus(news[1:10000])
-corpus_twitter <- corpus(twitter[1:10000])
-corpus_blogs <- corpus(blogs[1:10000])
+```{r build_corpus, message=FALSE, warning=FALSE, results=FALSE, error=FALSE}
+corpus_news <- corpus(sample(news)[1:1000])
+corpus_twitter <- corpus(sample(twitter)[1:1000])
+corpus_blogs <- corpus(sample(blogs)[1:1000])
 ```
 
 Each corpus contains the original data together with some meta info.
 
 ```{r clean_raw, echo=FALSE, message=FALSE}
-rm(news)
-rm(twitter)
-rm(blogs)
+#rm(news)
+#rm(twitter)
+#rm(blogs)
 ```
 
 From this corpora we build document feature matrices via the `dfm` method.
@@ -120,22 +121,8 @@ We keep stopwords and do not use word stemming, as we are not interessed in clas
 but want to predict the next word to be typed. We also keep profane words, as they can help making
 predictions for the next word. 
 
-Via the `dfm` function we also create document feature matrices for bi- and tri-grams:
-```{r build_matrix_ngram}
-dfm_news_bi <- dfm(corpus_news, ngram=2)
-dfm_twitter_bi <- dfm(corpus_twitter, ngram=2)
-dfm_blogs_bi <- dfm(corpus_blogs, ngram=2)
+Via the `dfm` function we also create document feature matrices for bi- and tri-grams by specifing the `ngram`-parameter.
 
-dfm_news_tri <- dfm(corpus_news, ngram=3)
-dfm_twitter_tri <- dfm(corpus_twitter, ngram=3)
-dfm_blogs_tri <- dfm(corpus_blogs, ngram=3)
-```
-
-```{r clean_corp, echo=FALSE, message=FALSE}
-rm(corpus_news)
-rm(corpus_twitter)
-rm(corpus_blogs)
-```
 
 # Exploratory Data Analysis
 
@@ -169,9 +156,14 @@ ggplot(top_unis, aes(x=Unigrams, y=Frequency, fill=Source)) +
   ggtitle("Frequencies for most frequent Unigrams") +
   facet_grid(Source~., scales = "free") +
   guides(fill=FALSE)
+
 ```
 
 ```{r plot_bi_gram, echo=FALSE}
+dfm_news_bi <- dfm(corpus_news, ngram=2, verbose =FALSE)
+dfm_twitter_bi <- dfm(corpus_twitter, ngram=2, verbose =FALSE)
+dfm_blogs_bi <- dfm(corpus_blogs, ngram=2, verbose =FALSE)
+
 top_bi_news <- as.data.frame(topfeatures(dfm_news_bi, 20))
 top_bi_twitter <- as.data.frame(topfeatures(dfm_twitter_bi, 20))
 top_bi_blogs <- as.data.frame(topfeatures(dfm_blogs_bi, 20))
@@ -197,9 +189,17 @@ ggplot(top_bi, aes(x=Bigrams, y=Frequency, fill=Source)) +
   ggtitle("Frequencies for most frequent Bigrams") +
   facet_grid(Source~., scales = "free") +
   guides(fill=FALSE)
+
+rm(dfm_news_bi)
+rm(dfm_twitter_bi)
+rm(dfm_blogs_bi)
 ```
 
 ```{r plot_tri_gram, echo=FALSE}
+dfm_news_tri <- dfm(corpus_news, ngram=3, verbose =FALSE)
+dfm_twitter_tri <- dfm(corpus_twitter, ngram=3, verbose =FALSE)
+dfm_blogs_tri <- dfm(corpus_blogs, ngram=3, verbose =FALSE)
+
 top_tri_news <- as.data.frame(topfeatures(dfm_news_tri, 20))
 top_tri_twitter <- as.data.frame(topfeatures(dfm_twitter_tri, 20))
 top_tri_blogs <- as.data.frame(topfeatures(dfm_blogs_tri, 20))
@@ -225,6 +225,10 @@ ggplot(top_tri, aes(x=Trigrams, y=Frequency, fill=Source)) +
   ggtitle("Frequencies for most frequent Trigrams") +
   facet_grid(Source~., scales = "free") +
   guides(fill=FALSE)
+
+rm(dfm_news_tri)
+rm(dfm_twitter_tri)
+rm(dfm_blogs_tri)
 ```
 
 ## Number of tokens per document
@@ -245,10 +249,106 @@ ggplot(token_data, aes(x=tokens, fill=Source)) +
   xlab("Nr. tokens") +
   ylab("Frequency") +
   xlim(0,300)
+
+rm(token_data)
+  
+```
+
+## Number of sentences per document
+
+This histograms show the number of sentences per document of the different sources. A document
+corresponds to one line in the raw text files.
+
+```{r nr_sentence, echo=FALSE}
+
+token_data = rbind(data.frame(tokens = nsentence(corpus_news), Source = "News"),
+                   data.frame(tokens = nsentence(corpus_twitter), Source = "Twitter"),
+                   data.frame(tokens = nsentence(corpus_blogs), Source = "Blogs"))
+ggplot(token_data, aes(x=tokens, fill=Source)) + 
+  geom_histogram(binwidth=1) +
+  theme_bw() +
+  facet_grid(Source~.,scales = "free") +
+  ggtitle("Number of sentences per document") +
+  xlab("Nr. sentences") +
+  ylab("Frequency") +
+  xlim(0,20)
   
 ```
 
 
+
+
+## Number of words vs. corpus covered
+
+The following line plot shows the number of unique words required to cover a certain percentage of the sampled documents.
+
+```{r plot_coverage, echo=FALSE}
+words_news <- rev(sort(colSums(dfm_news)))/sum(dfm_news)
+words_twitter <- rev(sort(colSums(dfm_twitter)))/sum(dfm_twitter)
+words_blogs <- rev(sort(colSums(dfm_blogs)))/sum(dfm_blogs)
+
+
+words_news <- data.frame(cum_p = cumsum(words_news), 
+                         words = seq_along(words_news),
+                         Source = "News") %>% filter(words %% 100 == 0)
+words_twitter <- data.frame(cum_p = cumsum(words_twitter), 
+                            words = seq_along(words_twitter),
+                            Source = "Twitter") %>% filter(words %% 100 == 0)
+words_blogs <- data.frame(cum_p = cumsum(words_blogs), 
+                          words = seq_along(words_blogs),
+                          Source = "Blogs") %>% filter(words %% 100 == 0)
+
+rownames(words_news) <- words_news$words
+rownames(words_twitter) <- words_twitter$words
+rownames(words_blogs) <- words_blogs$words
+
+words_coverage <- rbind(words_news, words_twitter, words_blogs)
+
+rm(words_news)
+rm(words_twitter)
+rm(words_blogs)
+
+ggplot(words_coverage, aes(x=words, y=cum_p, color=Source)) + 
+  geom_line() + 
+  xlab("Nr. unique words") + 
+  ylab("Percentage of sample covered") + 
+  theme_bw() + 
+  ggtitle("Number of unique words required to cover percentage of sample data")
+
+rm(words_coverage)
+```
+  
+The three sources are very different in the number of words required to cover a certain percentage.
+  
+## Lexical complexity
+
+The type-token-ratio is a measure for the lexical complexity of a document. The following boxplot
+shows the distribution of the lexical complexity for the documents in our sample.
+
+```{r plot_ttr, echo=FALSE}
+rm(corpus_news)
+rm(corpus_twitter)
+rm(corpus_blogs)
+rm(news)
+rm(blogs)
+rm(twitter)
+
+ld_news <- lexdiv(dfm_news, measure = "TTR")
+ld_twitter <- lexdiv(dfm_twitter, measure = "TTR")
+ld_blogs <- lexdiv(dfm_blogs, measure = "TTR")
+
+ld <- rbind(data.frame(data.frame(ttr = ld_news, Source = "News"),
+                       data.frame(ttr = ld_twitter, Source = "Twitter"),
+                       ttr = ld_blogs, Source = "Blogs"))
+
+ggplot(ld, aes(y=ttr, x=s, color=s)) + 
+  geom_boxplot() +
+  theme_bw() +
+  xlab("") +
+  ylab("Type/Token-Ratio") +
+  ggtitle("Type/Token-Ratio by Source")
+
+```
 
 # Next Steps
 
