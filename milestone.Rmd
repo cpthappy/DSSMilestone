@@ -276,8 +276,6 @@ ggplot(token_data, aes(x=tokens, fill=Source)) +
 ```
 
 
-
-
 ## Number of words vs. corpus covered
 
 The following line plot shows the number of unique words required to cover a certain percentage of the sampled documents.
@@ -325,7 +323,7 @@ The three sources are very different in the number of words required to cover a 
 The type-token-ratio is a measure for the lexical complexity of a document. The following boxplot
 shows the distribution of the lexical complexity for the documents in our sample.
 
-```{r plot_ttr, echo=FALSE}
+```{r plot_ttr, echo=FALSE, warning=FALSE}
 rm(corpus_news)
 rm(corpus_twitter)
 rm(corpus_blogs)
@@ -337,11 +335,11 @@ ld_news <- lexdiv(dfm_news, measure = "TTR")
 ld_twitter <- lexdiv(dfm_twitter, measure = "TTR")
 ld_blogs <- lexdiv(dfm_blogs, measure = "TTR")
 
-ld <- rbind(data.frame(data.frame(ttr = ld_news, Source = "News"),
-                       data.frame(ttr = ld_twitter, Source = "Twitter"),
-                       ttr = ld_blogs, Source = "Blogs"))
+ld <- rbind(data.frame(ttr = ld_news, Source = "News"),
+            data.frame(ttr = ld_twitter, Source = "Twitter"),
+            data.frame(ttr = ld_blogs, Source = "Blogs"))
 
-ggplot(ld, aes(y=ttr, x=s, color=s)) + 
+ggplot(ld, aes(y=ttr, x=Source, color=Source)) + 
   geom_boxplot() +
   theme_bw() +
   xlab("") +
