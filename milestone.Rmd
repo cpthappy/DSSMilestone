@@ -7,7 +7,7 @@ output: html_document
 
 # Summary
 
-The aim of this project is to target the "Next Word Prediciton" problem (NWP), i. e. to predict the next word in a sentence. The final result of this project will be an algorithm for NWP implemented as shiny app. The NWP feature is commonly found in web search sites or virtual keyboards for mobile applications.
+The aim of this project is to target the "Next Word Prediciton" problem (NWP), i.e. to predict the next word in a sentence. The final result of this project will be an algorithm for NWP implemented as shiny app. The NWP feature is commonly found in web search sites or virtual keyboards for mobile applications.
 
 For this project we use mainily the `quanteda`, `tm` and `stringi` packages for dealing with text data and tokenizing inputs.
 
@@ -25,7 +25,7 @@ This milestone report
 
 The data for this project is provided on the course website: https://d396qusza40orc.cloudfront.net/dsscapstone/dataset/Coursera-SwiftKey.zip. 
 The original source of this data is the HC Corpora http://www.corpora.heliohost.org. 
-For this project, we are using the English files. The files have been language filtered but may still contain some foreign text.
+For this project, we are using the English files. The files have been language filtered but may still contain some foreign text. The text from these files has been scraped from various blogs, newspages and tweets.
 
 ```{r read_data, echo=FALSE, message=FALSE}
 load("news.RData")
@@ -39,7 +39,7 @@ library(stringi)
 library(pander)
 ```
 
-For the provided english Corpora we have the following summary statistics:
+For the provided project raw data we have the following summary statistics:
 
 ```{r basic_stats, echo=FALSE, message=FALSE, results="asis"}
 rbind(stringi::stri_stats_general(twitter), 
@@ -81,12 +81,12 @@ each data set. We take only a random subsample of the provided data for the expl
 The entire raw data is too big to process it in reasonable time.
 
 ```{r build_corpus, message=FALSE, warning=FALSE, results=FALSE, error=FALSE}
-corpus_news <- corpus(sample(news)[1:1000])
-corpus_twitter <- corpus(sample(twitter)[1:1000])
-corpus_blogs <- corpus(sample(blogs)[1:1000])
+corpus_news <- corpus(sample(news)[1:200000])
+corpus_twitter <- corpus(sample(twitter)[1:200000])
+corpus_blogs <- corpus(sample(blogs)[1:200000])
 ```
 
-Each corpus contains the original data together with some meta info.
+Each corpus contains the sampled data together with some meta info.
 
 ```{r clean_raw, echo=FALSE, message=FALSE}
 #rm(news)
@@ -234,7 +234,7 @@ rm(dfm_blogs_tri)
 ## Number of tokens per document
 
 This histograms show the number of tokens per document of the different sources. A document
-corresponds to one line in the raw text files.
+corresponds to one line in the raw text files and a token represents a word.
 
 ```{r nr_token, echo=FALSE}
 
@@ -316,52 +316,22 @@ ggplot(words_coverage, aes(x=words, y=cum_p, color=Source)) +
 rm(words_coverage)
 ```
   
-The three sources are very different in the number of words required to cover a certain percentage.
-  
-## Lexical complexity
 
-The type-token-ratio is a measure for the lexical complexity of a document. The following boxplot
-shows the distribution of the lexical complexity for the documents in our sample.
-
-```{r plot_ttr, echo=FALSE, warning=FALSE}
-rm(corpus_news)
-rm(corpus_twitter)
-rm(corpus_blogs)
-rm(news)
-rm(blogs)
-rm(twitter)
-
-ld_news <- lexdiv(dfm_news, measure = "TTR")
-ld_twitter <- lexdiv(dfm_twitter, measure = "TTR")
-ld_blogs <- lexdiv(dfm_blogs, measure = "TTR")
-
-ld <- rbind(data.frame(ttr = ld_news, Source = "News"),
-            data.frame(ttr = ld_twitter, Source = "Twitter"),
-            data.frame(ttr = ld_blogs, Source = "Blogs"))
-
-ggplot(ld, aes(y=ttr, x=Source, color=Source)) + 
-  geom_boxplot() +
-  theme_bw() +
-  xlab("") +
-  ylab("Type/Token-Ratio") +
-  ggtitle("Type/Token-Ratio by Source")
-
-```
 
 # Next Steps
 
 I plan the following steps to develop and improve the prediciton algorithm:
 
 0. Split data into training, cross-validation and testing set. Build an evaluation function for
-   calculating the accuracy of the modell.
+   calculating the accuracy of the model.
 1. Build a basic $n$-gram modell using interpolation with $n <= 4$. 
 2. Split corpus first into sentences, insert a start sentence tag and then build the $n$-gram modell,
    so the prediciton algorithm takes the beginning of a new sentence into account.
-3. Remove documents with fewer than 3 tokens from the modell.
+3. Remove documents with fewer than 3 tokens from the modell, as they do not provide enough context for learning the relationship between words.
 4. Limit the modell to about 10k words and replace all words not in this list by a tag for "Unknown".
    This step should reduce the size of the modell dramatically, so it will possibly run on shiny.
    
-5. Use Kneser-Ney-Smoothing to improve the predictive quality of the algorithm.
+5. Use Kneser-Ney-Smoothing to improve the predictive quality of the algorithm. For an explanation of this method refer to http://mkoerner.de/media/bachelor-thesis.pdf.
 6. Increase the value of $n$. 
 7. Use more data from other sources. Possible sources could be:
 
